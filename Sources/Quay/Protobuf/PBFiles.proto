@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+// Various file formats
+// Adapted from from https://github.com/itchio/wharf/blob/master/pwr/pwr.proto
+// Originally by @fasterthanlime and @itchio
+
+// Signature file format
+
+message PBSignatureHeader {
+  PBCompressionSettings compression = 1;
+}
+
+message PBBlockHash {
+  uint32 weakHash = 1;  // weakrollinghash
+  bytes strongHash = 2; // md5
+}
+
+// Compression settings
+
+enum PBCompressionAlgorithm {
+  NONE = 0;
+  BROTLI = 1;
+  GZIP = 2;
+  ZSTD = 3;
+}
+
+message PBCompressionSettings {
+  PBCompressionAlgorithm algorithm = 1;
+  int32 quality = 2;
+}

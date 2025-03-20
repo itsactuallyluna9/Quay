@@ -13,7 +13,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.29.0")
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.29.0"),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.4")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -21,10 +22,12 @@ let package = Package(
         .target(
             name: "Quay",
             dependencies: [
-                .product(name: "SwiftProtobuf", package: "swift-protobuf")
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+                .product(name: "CryptoSwift", package: "cryptoswift")
             ],
             exclude: [
-            	"Protobuf/PBContainer.proto"
+                "Protobuf/PBContainer.proto",
+                "Protobuf/PBFiles.proto"
             ]
         ),
         .testTarget(

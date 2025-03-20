@@ -1,7 +1,10 @@
 import Foundation
 
-public struct QuayContainer : Sendable, Equatable {
-    public struct QuayDir : Sendable, Equatable {
+public struct QuayContainer: ProtobufAlias, Equatable {
+    typealias PBMessage = PBContainer
+
+    public struct QuayDir : ProtobufAlias, Equatable {
+        typealias PBMessage = PBDir
         public private(set) var name: String
         public private(set) var permissions: UInt32
         
@@ -23,7 +26,9 @@ public struct QuayContainer : Sendable, Equatable {
         }
     }
 
-    public struct QuayFile : Sendable, Equatable {
+    public struct QuayFile : ProtobufAlias, Equatable {
+        typealias PBMessage = PBFile
+
         public private(set) var name: String
         public private(set) var permissions: UInt32
         public private(set) var size: Int
@@ -49,7 +54,9 @@ public struct QuayContainer : Sendable, Equatable {
         }
     }
 
-    public struct QuaySymlink : Sendable, Equatable {
+    public struct QuaySymlink : ProtobufAlias, Equatable {
+        typealias PBMessage = PBSymlink
+
         public private(set) var name: String
         public private(set) var target: String
         public private(set) var permissions: UInt32
@@ -127,11 +134,6 @@ public struct QuayContainer : Sendable, Equatable {
         self.files = protobuf.files.map { QuayFile.init(protobuf: $0) }
         self.symlinks = protobuf.symlinks.map { QuaySymlink.init(protobuf: $0) }
         
-    }
-    
-    init(protobuf data: Data) throws {
-        let container = try PBContainer(serializedBytes: data)
-        self.init(protobuf: container)
     }
 
     public func iterFiles(_ root: URL?) -> AnyIterator<URL> {
