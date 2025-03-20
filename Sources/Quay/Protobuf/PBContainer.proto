@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// Containers
+// Adapted from https://github.com/itchio/lake/blob/master/tlc/tlc.proto
+// Originally by @fasterthanlime and @itchio
+
+message PBContainer {
+  repeated PBFile files = 1;
+  repeated PBDir dirs = 2;
+  repeated PBSymlink symlinks = 3;
+
+  int64 size = 16;
+}
+
+message PBDir {
+  string path = 1;
+  uint32 mode = 2;
+}
+
+message PBFile {
+  string path = 1;
+  uint32 mode = 2;
+
+  int64 size = 3;
+  int64 offset = 4;
+}
+
+message PBSymlink {
+  string path = 1;
+  uint32 mode = 2;
+
+  string dest = 3;
+}
