@@ -1,5 +1,7 @@
 # Quay
 
+[![Tests](https://github.com/itsactuallyluna9/Quay/actions/workflows/build_test.yml/badge.svg)](https://github.com/itsactuallyluna9/Quay/actions/workflows/build_test.yml)
+
 An implementation of Wharf in Swift.
 
 ## What is Wharf?

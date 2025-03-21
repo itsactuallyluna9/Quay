@@ -1,17 +1,22 @@
-name: Build & Test
+name: Tests
 
 on:
     push:
         branches:
             - main
+        paths:
+            - 'Sources/**'
+            - 'Tests/**'
     pull_request:
         branches:
             - main
-    workflow_dispatch:
+        paths:
+            - 'Sources/**'
+            - 'Tests/**'
 
 jobs:
     build:
-        name: Build & Test on ${{ matrix.os }}
+        name: Test on ${{ matrix.os }}
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-latest]
