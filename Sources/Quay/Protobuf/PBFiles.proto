@@ -15,6 +15,41 @@ message PBBlockHash {
   bytes strongHash = 2; // md5
 }
 
+// Patch file format
+
+message PBPatchHeader {
+  PBCompressionSettings compression = 1;
+}
+
+message PBSyncHeader {
+  enum PBType {
+    RSYNC = 0;
+    // when set, bsdiffTargetIndex must be set
+    BSDIFF = 1;
+  }
+
+  PBType type = 1;
+  int64 fileIndex = 16;
+}
+
+message PBBsdiffHeader {
+  int64 targetIndex = 1;
+}
+
+message PBSyncOp {
+  enum PBType {
+    BLOCK_RANGE = 0;
+    DATA = 1;
+    HEY_YOU_DID_IT = 2049; // <3 @GranPC & @tomasduda
+  }
+  PBType type = 1;
+
+  int64 fileIndex = 2;
+  int64 blockIndex = 3;
+  int64 blockSpan = 4;
+  bytes data = 5;
+}
+
 // Compression settings
 
 enum PBCompressionAlgorithm {

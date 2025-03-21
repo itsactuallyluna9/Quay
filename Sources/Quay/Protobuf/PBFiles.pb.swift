@@ -100,6 +100,149 @@ struct PBBlockHash: @unchecked Sendable {
   init() {}
 }
 
+struct PBPatchHeader: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var compression: PBCompressionSettings {
+    get {return _compression ?? PBCompressionSettings()}
+    set {_compression = newValue}
+  }
+  /// Returns true if `compression` has been explicitly set.
+  var hasCompression: Bool {return self._compression != nil}
+  /// Clears the value of `compression`. Subsequent reads from it will return its default value.
+  mutating func clearCompression() {self._compression = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _compression: PBCompressionSettings? = nil
+}
+
+struct PBSyncHeader: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var type: PBSyncHeader.PBType = .rsync
+
+  var fileIndex: Int64 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  enum PBType: SwiftProtobuf.Enum, Swift.CaseIterable {
+    typealias RawValue = Int
+    case rsync // = 0
+
+    /// when set, bsdiffTargetIndex must be set
+    case bsdiff // = 1
+    case UNRECOGNIZED(Int)
+
+    init() {
+      self = .rsync
+    }
+
+    init?(rawValue: Int) {
+      switch rawValue {
+      case 0: self = .rsync
+      case 1: self = .bsdiff
+      default: self = .UNRECOGNIZED(rawValue)
+      }
+    }
+
+    var rawValue: Int {
+      switch self {
+      case .rsync: return 0
+      case .bsdiff: return 1
+      case .UNRECOGNIZED(let i): return i
+      }
+    }
+
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    static let allCases: [PBSyncHeader.PBType] = [
+      .rsync,
+      .bsdiff,
+    ]
+
+  }
+
+  init() {}
+}
+
+struct PBBsdiffHeader: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var targetIndex: Int64 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+struct PBSyncOp: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var type: PBSyncOp.PBType = .blockRange
+
+  var fileIndex: Int64 = 0
+
+  var blockIndex: Int64 = 0
+
+  var blockSpan: Int64 = 0
+
+  var data: Data = Data()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  enum PBType: SwiftProtobuf.Enum, Swift.CaseIterable {
+    typealias RawValue = Int
+    case blockRange // = 0
+    case data // = 1
+
+    /// <3 @GranPC & @tomasduda
+    case heyYouDidIt // = 2049
+    case UNRECOGNIZED(Int)
+
+    init() {
+      self = .blockRange
+    }
+
+    init?(rawValue: Int) {
+      switch rawValue {
+      case 0: self = .blockRange
+      case 1: self = .data
+      case 2049: self = .heyYouDidIt
+      default: self = .UNRECOGNIZED(rawValue)
+      }
+    }
+
+    var rawValue: Int {
+      switch self {
+      case .blockRange: return 0
+      case .data: return 1
+      case .heyYouDidIt: return 2049
+      case .UNRECOGNIZED(let i): return i
+      }
+    }
+
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    static let allCases: [PBSyncOp.PBType] = [
+      .blockRange,
+      .data,
+      .heyYouDidIt,
+    ]
+
+  }
+
+  init() {}
+}
+
 struct PBCompressionSettings: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -197,6 +340,183 @@ extension PBBlockHash: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
+}
+
+extension PBPatchHeader: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "PBPatchHeader"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "compression"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._compression) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._compression {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: PBPatchHeader, rhs: PBPatchHeader) -> Bool {
+    if lhs._compression != rhs._compression {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSyncHeader: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "PBSyncHeader"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "type"),
+    16: .same(proto: "fileIndex"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.type) }()
+      case 16: try { try decoder.decodeSingularInt64Field(value: &self.fileIndex) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.type != .rsync {
+      try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
+    }
+    if self.fileIndex != 0 {
+      try visitor.visitSingularInt64Field(value: self.fileIndex, fieldNumber: 16)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: PBSyncHeader, rhs: PBSyncHeader) -> Bool {
+    if lhs.type != rhs.type {return false}
+    if lhs.fileIndex != rhs.fileIndex {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSyncHeader.PBType: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    0: .same(proto: "RSYNC"),
+    1: .same(proto: "BSDIFF"),
+  ]
+}
+
+extension PBBsdiffHeader: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "PBBsdiffHeader"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "targetIndex"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.targetIndex) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.targetIndex != 0 {
+      try visitor.visitSingularInt64Field(value: self.targetIndex, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: PBBsdiffHeader, rhs: PBBsdiffHeader) -> Bool {
+    if lhs.targetIndex != rhs.targetIndex {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSyncOp: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "PBSyncOp"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "type"),
+    2: .same(proto: "fileIndex"),
+    3: .same(proto: "blockIndex"),
+    4: .same(proto: "blockSpan"),
+    5: .same(proto: "data"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.type) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.fileIndex) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.blockIndex) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.blockSpan) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.data) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.type != .blockRange {
+      try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
+    }
+    if self.fileIndex != 0 {
+      try visitor.visitSingularInt64Field(value: self.fileIndex, fieldNumber: 2)
+    }
+    if self.blockIndex != 0 {
+      try visitor.visitSingularInt64Field(value: self.blockIndex, fieldNumber: 3)
+    }
+    if self.blockSpan != 0 {
+      try visitor.visitSingularInt64Field(value: self.blockSpan, fieldNumber: 4)
+    }
+    if !self.data.isEmpty {
+      try visitor.visitSingularBytesField(value: self.data, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: PBSyncOp, rhs: PBSyncOp) -> Bool {
+    if lhs.type != rhs.type {return false}
+    if lhs.fileIndex != rhs.fileIndex {return false}
+    if lhs.blockIndex != rhs.blockIndex {return false}
+    if lhs.blockSpan != rhs.blockSpan {return false}
+    if lhs.data != rhs.data {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSyncOp.PBType: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    0: .same(proto: "BLOCK_RANGE"),
+    1: .same(proto: "DATA"),
+    2049: .same(proto: "HEY_YOU_DID_IT"),
+  ]
 }
 
 extension PBCompressionSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

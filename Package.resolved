@@ -1,5 +1,5 @@
 {
-  "originHash" : "115d4b2e9e7766ce6e55d304b71cba60cf78dd2c4f2f0497a1245fc1cbebb76e",
+  "originHash" : "137854a4256774904397170c8d58a0bd53d3855720836207b059490e2e047a6d",
   "pins" : [
     {
       "identity" : "cryptoswift",
@@ -35,6 +35,15 @@
       "state" : {
         "revision" : "d72aed98f8253ec1aa9ea1141e28150f408cf17f",
         "version" : "1.29.0"
+      }
+    },
+    {
+      "identity" : "swiftbrotli",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/f-meloni/SwiftBrotli.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "32a2b3b522133736fa133f84ff3de7417e151e7a"
       }
     }
   ],

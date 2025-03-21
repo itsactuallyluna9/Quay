@@ -5,7 +5,7 @@ import Foundation
 struct Container {
     @Test()
     func readsFromProtobuf() async throws {
-        let data = Data(base64Encoded: "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgsKBnNhbXBsZRDtAxogCglpbWFnZS5wbmcQpAMaEHNhbXBsZS9pbWFnZS5wbmc=")
+        let data = Data(base64Encoded: "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmc=")
         try #require(data != nil)
 
         let container = try QuayContainer(protobuf: data!)
@@ -40,15 +40,15 @@ struct Container {
     @Test()
     func encodesToProtobuf() async throws {
         let container = QuayContainer(directories: [
-            .init(name: "sample", permissions: 0o755)
+            .init(name: "sample", permissions: UInt32(0o755 | 0x10000))
         ], files: [
             .init(name: "hello.txt", permissions: 0o644, size: 14),
             .init(name: "sample/image.png", permissions: 0o644, size: 64*1024)
         ], symlinks: [
-            .init(name: "image.png", target: "sample/image.png", permissions: 0o644)
+            .init(name: "image.png", target: "sample/image.png", permissions: UInt32(0o644 | 0x8000000))
         ])
 
         let data = try container.protobuf().serializedData()
-        #expect(data.base64EncodedString() == "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgsKBnNhbXBsZRDtAxogCglpbWFnZS5wbmcQpAMaEHNhbXBsZS9pbWFnZS5wbmc=")
+        #expect(data.base64EncodedString() == "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmc=")
     }
 }

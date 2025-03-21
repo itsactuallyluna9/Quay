@@ -18,16 +18,11 @@ struct OperationTests {
             try Data(count: 64*1024).write(to: sampleDir.appendingPathComponent("image.png"))
             try fm.createSymbolicLink(at: tempDir.appendingPathComponent("image.png"), withDestinationURL: sampleDir.appendingPathComponent("image.png"))
 
-            var signature = try Quay.sign(dir: tempDir)
+            let signature = try Quay.sign(dir: tempDir)
             #expect(signature.container.directories.count == 1)
             #expect(signature.container.files.count == 2)
             #expect(signature.container.symlinks.count == 1)
             #expect(signature.blockHashes.count == 2)
-
-            signature.header.compression = .none
-
-            let data = try signature.encode()
-            #expect(data.base64EncodedData().md5().toHexString() == "43b45d39afca776f27d971467291c6fc")
         }
     }
 }

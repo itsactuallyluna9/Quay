@@ -1,5 +1,6 @@
 import Foundation
 import SwiftProtobuf
+import SwiftBrotli
 
 protocol ProtobufAlias: Sendable {
     associatedtype PBMessage: SwiftProtobuf.Message
@@ -66,7 +67,13 @@ extension WharfFile {
         case .none:
             finalData.append(bodyData)
         case .brotli:
-            throw Quay.createError(.unimplemented, description: "brotli compression is not yet supported", failureReason: "brotli compression is not yet supported")
+            let result = Brotli().compress(bodyData, quality: header.compression.quality)
+            switch result {
+            case .success(let compressedData):
+                finalData.append(compressedData)
+            case .failure(let error):
+                throw Quay.createError(.compressionFailed, description: "compression failed", failureReason: error.localizedDescription)
+            }
         case .gzip:
             throw Quay.createError(.unimplemented, description: "gzip compression is not yet supported", failureReason: "gzip compression is not yet supported")
         case .zstd:
@@ -83,24 +90,30 @@ private func checkMagicNumber(actual: Int32, expected: Magic) throws {
     }
 }
 
-func parseHeader(data: Data, expectedMagic: Magic) throws -> (header: SignatureHeader, body: Data) {
+func parseHeader<T: FileHeader>(data: Data, headerType: T.Type, expectedMagic: Magic) throws -> (header: T, body: Data) {
     // Step 1: do we have a valid magic number?
         
-    try checkMagicNumber(actual: data.readInt32(), expected: Magic.signature)
+    try checkMagicNumber(actual: data.readInt32(), expected: expectedMagic)
     
     // Step 2: parse header
-    let headerLength = Int(data.readUInt8(at: 4))
-    let header = try SignatureHeader(protobuf: data.dropFirst(5).prefix(headerLength))
+    let headerLength = Int(try data.readUVarInt(offset: 4).value)
+    let header = try headerType.init(protobuf: data.dropFirst(4+data.readUVarInt(offset: 4).bytesRead).prefix(headerLength))
     
     // Step 3: uncompress based on the header
     let body: Data
     switch header.compression.algorithm {
     case .none:
         // noop
-        body = data.dropFirst(5+headerLength)
+        body = data.dropFirst(try 4 + data.readUVarInt(offset: 4).bytesRead + headerLength)
         break
     case .brotli:
-        throw Quay.createError(.unimplemented, description: "brotli compression is not yet supported", failureReason: "brotli compression is not yet supported")
+        let result = Brotli().decompress(data.dropFirst(5+headerLength))
+        switch result {
+        case .success(let decompressedData):
+            body = decompressedData
+        case .failure(let error):
+            throw Quay.createError(.decompressionFailed, description: "decompression failed", failureReason: error.localizedDescription)
+        }
     case .gzip:
         throw Quay.createError(.unimplemented, description: "gzip compression is not yet supported", failureReason: "gzip compression is not yet supported")
     case .zstd:
@@ -115,11 +128,16 @@ func parseBody(data: Data) -> [Data] {
     
     // always message length, then message
     // repeat until end of data
+    try! data.write(to: URL(fileURLWithPath: "/tmp/patch.pwr.body"))
     var pos = data.startIndex
     var messages: [Data] = []
     while pos < data.endIndex {
-        let messageLength = Int(data.readUInt8(at: pos))
-        pos += 1
+        let len = try! data.readUVarInt(offset: pos)
+        let messageLength = Int(len.value)
+        pos += len.bytesRead
+        // if messageLength == 0 {
+        //     continue
+        // }
         messages.append(data.dropFirst(pos).prefix(messageLength))
         pos += messageLength
     }

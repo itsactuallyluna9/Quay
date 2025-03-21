@@ -29,7 +29,7 @@ public struct WharfSignature: WharfFile {
     public private(set) var blockHashes: [BlockHash]
     
     public init(from data: Data) throws {
-        let headerResults = try parseHeader(data: data, expectedMagic: .signature)
+        let headerResults = try parseHeader(data: data, headerType: SignatureHeader.self, expectedMagic: .signature)
         self.header = headerResults.header
         // Step 4: parse body
         // Body consists of a Container, and then a bunch of BlockHash messages.

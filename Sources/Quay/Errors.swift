@@ -5,6 +5,8 @@ extension Quay {
         case invalidMagicNumber
         case invalidHeader
         case decompressionFailed
+        case compressionFailed
+        case decodeFailed
         case unimplemented = 69
         case unknown
     }
