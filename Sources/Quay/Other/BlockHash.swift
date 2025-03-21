@@ -62,6 +62,10 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
     public private(set) var weakHash: UInt32
     public private(set) var strongHash: Data
 
+    package var fileIndex: Int?
+    package var blockIndex: Int?
+    package var shortSize: Int?
+
     init(protobuf: PBBlockHash) {
         self.strongHash = protobuf.strongHash
         self.weakHash = protobuf.weakHash
@@ -93,6 +97,16 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
         }
 
         return hashes
+    }
+
+    mutating func anchor(fileIndex: Int, blockIndex: Int, shortSize: Int) {
+        self.fileIndex = fileIndex
+        self.blockIndex = blockIndex
+        self.shortSize = shortSize
+    }
+
+    package var isAnchored: Bool {
+        return fileIndex != nil && blockIndex != nil && shortSize != nil
     }
 
     func protobuf() -> PBBlockHash {

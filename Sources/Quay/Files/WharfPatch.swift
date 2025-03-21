@@ -30,12 +30,24 @@ public struct SyncOp: ProtobufAlias {
         self.data = protobuf.data
     }
 
-    init(type: SyncOpType, fileIndex: Int, blockIndex: Int, blockSpan: Int, data: Data) {
+    init(type: SyncOpType, fileIndex: Int?, blockIndex: Int?, blockSpan: Int?, data: Data?) {
         self.type = type
         self.fileIndex = fileIndex
         self.blockIndex = blockIndex
         self.blockSpan = blockSpan
         self.data = data
+    }
+
+    static func initBlockRange(fileIndex: Int, blockIndex: Int, blockSpan: Int) -> SyncOp {
+        SyncOp(type: .blockRange, fileIndex: fileIndex, blockIndex: blockIndex, blockSpan: blockSpan, data: nil)
+    }
+
+    static func initData(data: Data) -> SyncOp {
+        SyncOp(type: .data, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: data)
+    }
+
+    static func initHeyYouDidIt() -> SyncOp {
+        SyncOp(type: .heyYouDidIt, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: nil)
     }
 
     func protobuf() -> PBSyncOp {
@@ -95,7 +107,7 @@ public struct WharfPatch: WharfFile {
     public init(target: WharfSignature, source: URL) throws {
         let owedMax = 4 * 1024 * 1024 // 4MB
 
-        let library = constructBlockLibrary(hashes: target.blockHashes)
+        let library = constructBlockLibrary(signature: target)
         self.header = .init(compression: .transportDefault)
         self.targetContainer = target.container
         self.sourceContainer = try QuayContainer(folder: source)
@@ -141,17 +153,33 @@ public struct WharfPatch: WharfFile {
                     let strongHash = fileData.subdata(in: tail..<head).md5()
                     
                     // check if we have a match
-                    if let match = candidates.first(where: { $0.strongHash == strongHash }) {
+                    // Sort candidates to prioritize the preferred file index
+                    let sortedCandidates = candidates.sorted { (lhs, rhs) in
+                        if lhs.fileIndex == perferredFileIndex {
+                            return true
+                        } else if rhs.fileIndex == perferredFileIndex {
+                            return false
+                        } else {
+                            return lhs.fileIndex! < rhs.fileIndex!
+                        }
+                    }
+
+                    if let match = sortedCandidates.first(where: { $0.strongHash == strongHash }) {
                         // we have a match!
-                        // write out the owed data
+                        // write out the owed data if we have any
                         if owedTail < tail {
                             let span = owedTail..<tail
                             let owedData = fileData.subdata(in: span)
-                            self.syncOps.append(.init(type: .data, fileIndex: -1, blockIndex: 0, blockSpan: 0, data: owedData))
+                            self.syncOps.append(.initData(data: owedData))
                             owedTail = tail
                         }
                         // write out the match
-                        self.syncOps.append(.init(type: .blockRange, fileIndex: -1, blockIndex: head, blockSpan: 64 * 1024, data: Data()))
+                        // if the previous syncOp was a blockRange, we can extend it
+                        if let lastOp = syncOps.last, lastOp.type == .blockRange, lastOp.fileIndex == match.fileIndex, lastOp.blockIndex == (match.blockIndex! - 1) {
+                            syncOps[syncOps.count - 1].blockSpan! += 1
+                        } else {
+                            syncOps.append(.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
+                        }
                         // reset the window
                         tail = head
                         owedHead = head
@@ -168,7 +196,7 @@ public struct WharfPatch: WharfFile {
                     // write out the owed data
                     let span = owedTail..<owedHead
                     let owedData = fileData.subdata(in: span)
-                    self.syncOps.append(.init(type: .data, fileIndex: -1, blockIndex: 0, blockSpan: 0, data: owedData))
+                    self.syncOps.append(.initData(data: owedData))
                     owedTail = owedHead
                 }
             }
@@ -177,13 +205,14 @@ public struct WharfPatch: WharfFile {
             owedHead = fileData.count
             if owedHead - owedTail > 0 {
                 // write out the owed data
+                // TODO: check if we can extend the last blockRange
                 let span = owedTail..<owedHead
                 let owedData = fileData.subdata(in: span)
-                self.syncOps.append(.init(type: .data, fileIndex: -1, blockIndex: 0, blockSpan: 0, data: owedData))
+                self.syncOps.append(.initData(data: owedData))
             }
         }
 
-        self.syncOps.append(.init(type: .heyYouDidIt, fileIndex: 0, blockIndex: 0, blockSpan: 0, data: Data()))
+        self.syncOps.append(.initHeyYouDidIt())
     }
 
     func encodeHeader() -> any FileHeader {

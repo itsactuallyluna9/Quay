@@ -26,7 +26,7 @@ public struct WharfSignature: WharfFile {
 
     public var header: SignatureHeader
     public private(set) var container: QuayContainer
-    public private(set) var blockHashes: [BlockHash]
+    public package(set) var blockHashes: [BlockHash]
     
     public init(from data: Data) throws {
         let headerResults = try parseHeader(data: data, headerType: SignatureHeader.self, expectedMagic: .signature)
