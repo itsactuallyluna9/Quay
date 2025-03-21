@@ -9,7 +9,7 @@ public extension Quay {
     /// - Returns:
     ///   - patch: A patch file containing the differences between the two directories.
     ///   - signature: The new directory's signature.
-    static func diff(target: URL, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature?) {
+    static func diff(target: URL, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature) {
         // Step 1: Get signature of target directories
         let targetSignature = try loadOrMakeSignature(for: target)
 
@@ -24,13 +24,14 @@ public extension Quay {
     /// - Returns:
     ///   - patch: A patch file containing the differences between the two directories.
     ///   - signature: The new directory's signature.
-    static func diff(target: WharfSignature, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature?) {
-        // Step 2: Generate the diff and patch on-the-fly
+    static func diff(target: WharfSignature, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature) {
+        // Step 2: Generate the patch and signature on-the-fly
+        // TODO: generate signature while creating the patch
         let patch = try WharfPatch(target: target, source: source)
-        // throw createError(.unimplemented, description: "Not implemented", failureReason: "Diff not implemented yet! ")
+        let signature = try sign(dir: source)
 
         // Step 3: Return the patch and the new signature
-        return (patch: patch, signature: nil)
+        return (patch: patch, signature: signature)
     }
 
     package static func loadOrMakeSignature(for url: URL) throws -> WharfSignature {
