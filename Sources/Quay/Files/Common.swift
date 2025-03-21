@@ -107,7 +107,7 @@ func parseHeader<T: FileHeader>(data: Data, headerType: T.Type, expectedMagic: M
         body = data.dropFirst(try 4 + data.readUVarInt(offset: 4).bytesRead + headerLength)
         break
     case .brotli:
-        let result = Brotli().decompress(data.dropFirst(5+headerLength))
+        let result = Brotli().decompress(data.dropFirst(5+headerLength), maximumDecompressedSize: 1024*1024*1024) // 1GB
         switch result {
         case .success(let decompressedData):
             body = decompressedData

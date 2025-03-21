@@ -1,5 +1,41 @@
 import Foundation
 
+public struct SyncOpHeader: ProtobufAlias {
+    typealias PBMessage = PBSyncHeader
+
+    public enum SyncHeaderType: Int, CaseIterable, Equatable, Sendable {
+        case rsync = 0
+        case bsdiff = 1
+
+        static func fromProtobuf(_ protobuf: PBSyncHeader.PBType) throws -> SyncHeaderType {
+            guard let algo = SyncHeaderType.init(rawValue: protobuf.rawValue) else {
+                throw Quay.createError(.invalidHeader, description: "Invalid compression algorithm", failureReason: "Unknown compression algorithm with value \(protobuf.rawValue)")
+            }
+            return algo
+        }
+    }
+
+    public package(set) var type: SyncHeaderType
+    public package(set) var fileIndex: Int
+
+    init(protobuf: PBSyncHeader) throws {
+        self.type = try .fromProtobuf(protobuf.type)
+        self.fileIndex = Int(protobuf.fileIndex)
+    }
+
+    init(type: SyncHeaderType, fileIndex: Int) {
+        self.type = type
+        self.fileIndex = fileIndex
+    }
+
+    func protobuf() -> PBSyncHeader {
+        var header = PBSyncHeader()
+        header.type = PBSyncHeader.PBType(rawValue: type.rawValue)!
+        header.fileIndex = Int64(fileIndex)
+        return header
+    }
+}
+
 public struct SyncOp: ProtobufAlias {
     typealias PBMessage = PBSyncOp
 
@@ -82,13 +118,17 @@ public struct PatchHeader: FileHeader {
 }
 
 /// A `WharfPatch` contains all of the information needed to apply an upgrade from `old` to `new`.
+protocol SyncOperation: ProtobufAlias {}
+extension SyncOp: SyncOperation {}
+extension SyncOpHeader: SyncOperation {}
+
 public struct WharfPatch: WharfFile {
     var magic: Magic { .patch }
 
-    public private(set) var header: PatchHeader
+    public var header: PatchHeader
     public private(set) var targetContainer: QuayContainer
     public private(set) var sourceContainer: QuayContainer
-    public private(set) var syncOps: [SyncOp]
+    private(set) var syncOps: [any SyncOperation]
     
     public init(from data: Data) throws {
         let headerResults = try parseHeader(data: data, headerType: PatchHeader.self, expectedMagic: .patch)
@@ -101,7 +141,21 @@ public struct WharfPatch: WharfFile {
         }
         self.targetContainer = try QuayContainer(protobuf: messages[0])
         self.sourceContainer = try QuayContainer(protobuf: messages[1])
-        self.syncOps = try messages.dropFirst(2).map { try SyncOp(protobuf: $0) }
+        self.syncOps = []
+
+        var nextHeader = true
+        for message in messages.dropFirst(2) {
+            if nextHeader {
+                nextHeader = false
+                self.syncOps.append(try SyncOpHeader(protobuf: message))
+            } else {
+                let parsed = try SyncOp(protobuf: message)
+                self.syncOps.append(parsed)
+                if parsed.type == .heyYouDidIt {
+                    nextHeader = true
+                }
+            }
+        }
     }
 
     public init(target: WharfSignature, source: URL) throws {
@@ -114,7 +168,7 @@ public struct WharfPatch: WharfFile {
         self.syncOps = []
         var weakHashDigest = WeakRollingHash()
 
-        for file in sourceContainer.iterFiles(source) {
+        for (fileIndex, file) in sourceContainer.iterFiles(source).enumerated() {
             weakHashDigest.reset()
             var owedTail = 0
             var owedHead = 0
@@ -135,6 +189,8 @@ public struct WharfPatch: WharfFile {
             // anything not between head and tail that we haven't "saved" yet is owed
             // if that ever gets above 4MB, we need to write it out.
             // if we find a match, we need to write out the owed data, then we can do the thing
+
+            self.syncOps.append(SyncOpHeader.init(type: .rsync, fileIndex: fileIndex))
 
             while head < fileData.count {
                 let byte = fileData[head]
@@ -170,15 +226,15 @@ public struct WharfPatch: WharfFile {
                         if owedTail < tail {
                             let span = owedTail..<tail
                             let owedData = fileData.subdata(in: span)
-                            self.syncOps.append(.initData(data: owedData))
+                            self.syncOps.append(SyncOp.initData(data: owedData))
                             owedTail = tail
                         }
                         // write out the match
                         // if the previous syncOp was a blockRange, we can extend it
-                        if let lastOp = syncOps.last, lastOp.type == .blockRange, lastOp.fileIndex == match.fileIndex, lastOp.blockIndex == (match.blockIndex! - 1) {
-                            syncOps[syncOps.count - 1].blockSpan! += 1
+                        if var lastOp = syncOps.last as? SyncOp, lastOp.type == .blockRange, lastOp.fileIndex == match.fileIndex, (lastOp.blockIndex! + lastOp.blockSpan!) == match.blockIndex {
+                            lastOp.blockSpan! += 1
                         } else {
-                            syncOps.append(.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
+                            syncOps.append(SyncOp.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
                         }
                         // reset the window
                         tail = head
@@ -196,7 +252,7 @@ public struct WharfPatch: WharfFile {
                     // write out the owed data
                     let span = owedTail..<owedHead
                     let owedData = fileData.subdata(in: span)
-                    self.syncOps.append(.initData(data: owedData))
+                    self.syncOps.append(SyncOp.initData(data: owedData))
                     owedTail = owedHead
                 }
             }
@@ -208,11 +264,10 @@ public struct WharfPatch: WharfFile {
                 // TODO: check if we can extend the last blockRange
                 let span = owedTail..<owedHead
                 let owedData = fileData.subdata(in: span)
-                self.syncOps.append(.initData(data: owedData))
+                self.syncOps.append(SyncOp.initData(data: owedData))
             }
+            self.syncOps.append(SyncOp.initHeyYouDidIt())
         }
-
-        self.syncOps.append(.initHeyYouDidIt())
     }
 
     func encodeHeader() -> any FileHeader {
