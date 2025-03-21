@@ -48,7 +48,7 @@ extension Data {
     }
 }
 
-func encodeUVarInt(value: UInt64) -> Data {
+func encodeUVarInt(_ value: UInt64) -> Data {
     var value = value
     var data = Data()
     repeat {

@@ -54,11 +54,11 @@ extension WharfFile {
 
         // serialize header
         let headerData = try header.protobuf().serializedData()
-        finalData.append(UInt8(headerData.count))
+        finalData.append(encodeUVarInt(UInt64(headerData.count)))
         finalData.append(headerData)
 
         for msg in body {
-            bodyData.append(UInt8(msg.count))
+            bodyData.append(encodeUVarInt(UInt64(msg.count)))
             bodyData.append(msg)
         }
 

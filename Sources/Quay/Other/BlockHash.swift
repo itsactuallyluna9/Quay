@@ -34,7 +34,7 @@ package struct WeakRollingHash {
         let aPop = head - tail >= buffer.count ? UInt32(buffer[tail % buffer.count]) : 0
 
         beta1 = (beta1 - aPop + aPush) % _M
-        beta2 = (beta2 - UInt32(head - tail) * aPop + beta1) % _M
+        beta2 = (beta2 - ((UInt32(head - tail) * aPop) % _M) + beta1) % _M
 
         head += 1
         if head - tail > buffer.count {
