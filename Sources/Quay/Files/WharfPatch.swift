@@ -168,6 +168,8 @@ public struct WharfPatch: WharfFile {
         self.syncOps = []
         var weakHashDigest = WeakRollingHash()
 
+        let progress = Progress(totalUnitCount: Int64(sourceContainer.files.count))
+
         for (fileIndex, file) in sourceContainer.iterFiles(source).enumerated() {
             weakHashDigest.reset()
             var owedTail = 0
@@ -268,6 +270,7 @@ public struct WharfPatch: WharfFile {
                 self.syncOps.append(SyncOp.initData(data: owedData))
             }
             self.syncOps.append(SyncOp.initHeyYouDidIt())
+            progress.completedUnitCount = Int64(fileIndex)
         }
     }
 
