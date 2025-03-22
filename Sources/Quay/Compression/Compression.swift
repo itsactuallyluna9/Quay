@@ -14,7 +14,9 @@ public enum CompressionAlgorithm: Int, CaseIterable, Sendable, Equatable {
     }
 }
 
-public struct CompressionSettings : Sendable, Equatable {
+public struct CompressionSettings : ProtobufAlias, Equatable {
+    typealias PBMessage = PBCompressionSettings
+
     public var algorithm: CompressionAlgorithm
     public var quality: Int32 = 0
     

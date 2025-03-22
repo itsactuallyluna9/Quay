@@ -176,7 +176,8 @@ public struct WharfPatch: WharfFile {
             var head = 64 * 1024
 
             let fileData = try Data(contentsOf: file)
-            let perferredFileIndex = target.container.files.firstIndex { $0.name == file.path } ?? -1
+            let filePath = file.path
+            let perferredFileIndex = target.container.files.firstIndex { $0.name == filePath } ?? -1
 
             // alright, lets actually do this!
             // process is simple:
