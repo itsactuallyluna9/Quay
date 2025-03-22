@@ -89,12 +89,17 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
         let fileData = try Data(contentsOf: src)
         var position = 0
 
+        let progress = Progress(totalUnitCount: Int64(fileData.count))
+
         while position < fileData.count {
             let end = min(position + blockSize, fileData.count)
             let block = fileData[position..<end]
             hashes.append(BlockHash.init(block: block))
             position += blockSize
+            progress.completedUnitCount = Int64(position)
         }
+
+        progress.completedUnitCount = Int64(fileData.count)
 
         return hashes
     }
