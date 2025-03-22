@@ -11,8 +11,13 @@ public extension Quay {
     ///   - signature: The new directory's signature.
     static func diff(target: URL, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature) {
         // Step 1: Get signature of target directories
+        let progress = Progress(totalUnitCount: 100)
+        progress.becomeCurrent(withPendingUnitCount: 20)
         let targetSignature = try loadOrMakeSignature(for: target)
+        progress.resignCurrent()
 
+        progress.becomeCurrent(withPendingUnitCount: 80)
+        defer { progress.resignCurrent() } // this should happen after the diff...
         return try diff(target: targetSignature, source: source)
     }
 
@@ -27,8 +32,15 @@ public extension Quay {
     static func diff(target: WharfSignature, source: URL) throws -> (patch: WharfPatch, signature: WharfSignature) {
         // Step 2: Generate the patch and signature on-the-fly
         // TODO: generate signature while creating the patch
+        let progress = Progress(totalUnitCount: 100)
+
+        progress.becomeCurrent(withPendingUnitCount: 90)
         let patch = try WharfPatch(target: target, source: source)
+        progress.resignCurrent()
+        
+        progress.becomeCurrent(withPendingUnitCount: 10)
         let signature = try sign(dir: source)
+        progress.resignCurrent()
 
         // Step 3: Return the patch and the new signature
         return (patch: patch, signature: signature)
