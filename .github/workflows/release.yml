@@ -1,0 +1,50 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "v*"
+
+jobs:
+    create_release:
+        name: Create Release
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Fetch tag
+              run: git fetch --depth=1 origin +${{ github.ref }}:${{ github.ref }}
+            - name: Get version
+              id: get_version
+              run: echo "::set-output name=version::${GITHUB_REF/refs\/tags\//}"
+            - name: Create Release
+              id: create_release
+              uses: actions/create-release@v1
+              with:
+                tag_name: ${{ steps.get_version.outputs.version }}
+                release_name: ${{ steps.get_version.outputs.version }}
+                body: |
+                  Changes in this release:
+                  - See the changelog for more details.
+                draft: false
+                prerelease: ${{ startsWith(steps.get_version.outputs.version, 'v0.') || contains(steps.get_version.outputs.version, '-') }}
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    
+    docs:
+        name: Generate Documentation
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: swift-actions/setup-swift@v2
+              with:
+                  swift-version: '6'
+            - name: Build Documentation
+              run: |
+                 swift package --allow-writing-to-directory build-docs \
+                   generate-documentation --target Quay --disable-indexing --transform-for-static-hosting \
+                   --source-service github --source-service-base-url "https://github.com/itsactuallyluna9/Quay/blob/main" --checkout-path $(pwd) \
+                   --hosting-base-path https://itsactuallyluna9.github.io/Quay --output-path build-docs
+            - name: Deploy Documentation
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./build-docs
