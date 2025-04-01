@@ -8,15 +8,14 @@ struct OperationTests {
         @Test func signsDirectory() async throws {
             let fm = FileManager.default
             let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
-            try fm.createDirectory(at: tempDir, withIntermediateDirectories: true, attributes: nil)
-            defer { try? fm.removeItem(at: tempDir) }
+            defer { cleanupTestDir(at: tempDir) }
 
-            // make a sample directory
-            let sampleDir = tempDir.appendingPathComponent("sample")
-            try fm.createDirectory(at: sampleDir, withIntermediateDirectories: true, attributes: nil)
-            try "Hello, World!".write(to: tempDir.appendingPathComponent("hello.txt"), atomically: true, encoding: .utf8)
-            try Data(count: 64*1024).write(to: sampleDir.appendingPathComponent("image.png"))
-            try fm.createSymbolicLink(at: tempDir.appendingPathComponent("image.png"), withDestinationURL: sampleDir.appendingPathComponent("image.png"))
+            try makeTestDir(at: tempDir, settings: .init(entries: [
+                // create a few files to test signing
+                .init(path: "hello.txt", data: "Hello, World!\n".data(using: .utf8)),
+                .init(path: "sample/image.png", size: 64*1024, seed: 0x2),
+                .init(path: "image.png", dest: "sample/image.png")
+            ]))
 
             let signature = try Quay.sign(dir: tempDir)
             #expect(signature.container.directories.count == 1)
