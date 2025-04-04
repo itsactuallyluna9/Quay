@@ -14,4 +14,4 @@ public enum Magic: Int32 {
 }
 
 let ModeMask = 0o644
-let BlockSize: Int64 = 64 * 1024 // 64 KiB
+let BlockSize: Int = 64 * 1024 // 64 KiB
