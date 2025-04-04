@@ -120,4 +120,17 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
         hash.strongHash = strongHash
         return hash
     }
+    
+    /// Computes the number of small blocks a file is made up of.
+    static func computeNumBlocks(_ fileSize: Int) -> Int {
+        return (fileSize + BlockSize - 1) / BlockSize
+    }
+    
+    /// Computes the size of one of the file's blocks.
+    static func computeBlockSize(fileSize: Int, blockIdx: Int) -> Int {
+        if BlockSize * (blockIdx+1) > fileSize {
+            return fileSize % BlockSize
+        }
+        return BlockSize
+    }
 }
