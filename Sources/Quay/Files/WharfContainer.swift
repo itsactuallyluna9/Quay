@@ -21,7 +21,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         func protobuf() -> PBDir {
             var dir = PBDir()
             dir.path = name
-            dir.mode = permissions
+            dir.mode = permissions | 0x10000
             return dir
         }
     }
@@ -77,7 +77,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
             var symlink = PBSymlink()
             symlink.path = name
             symlink.dest = target
-            symlink.mode = permissions
+            symlink.mode = permissions | 0x8000000
             return symlink
         }
     }
@@ -108,7 +108,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
                 let permissions = try fm.attributesOfItem(atPath: item.path)[.posixPermissions] as? UInt32 ?? 0o777
                 
                 if resourceValues.isDirectory == true {
-                    directories.append(.init(name: itemRelativePath, permissions: permissions | 0x10000))
+                    directories.append(.init(name: itemRelativePath, permissions: permissions))
                     try scan(item, relativePath: itemRelativePath)
                 } else if resourceValues.isSymbolicLink == true {
                     let dest = try fm.destinationOfSymbolicLink(atPath: item.path)
@@ -119,7 +119,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
                     } else {
                         relativeDest = targetURL.path.replacingOccurrences(of: folder.path + "/", with: "")
                     }
-                    symlinks.append(.init(name: itemRelativePath, target: relativeDest, permissions: permissions | 0x8000000))
+                    symlinks.append(.init(name: itemRelativePath, target: relativeDest, permissions: permissions))
                 } else {
                     files.append(.init(name: itemRelativePath, permissions: permissions, size: resourceValues.fileSize ?? 0))
                 }
