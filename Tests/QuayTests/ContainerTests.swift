@@ -16,7 +16,6 @@ struct Container {
 
     @Test()
     func constructsFromFolder() async throws {
-        let fm = FileManager.default
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         defer { cleanupTestDir(at: tempDir) }
 

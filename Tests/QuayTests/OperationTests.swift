@@ -6,7 +6,6 @@ struct OperationTests {
     @Suite("Sign")
     struct SignTests {
         @Test func signsDirectory() async throws {
-            let fm = FileManager.default
             let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
             defer { cleanupTestDir(at: tempDir) }
 
