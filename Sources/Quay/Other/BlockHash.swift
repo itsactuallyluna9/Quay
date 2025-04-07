@@ -1,60 +1,4 @@
 import Foundation
-import CryptoSwift
-
-package struct WeakRollingHash {
-    private let _M: UInt32 = 1 << 16
-    private var beta1: UInt32 = 0
-    private var beta2: UInt32 = 0
-
-    private static let bufferSize = 64 * 1024
-    private var buffer: [UInt8]
-    private var head = 0
-    private var tail = 0
-
-    init() {
-        buffer = Array(repeating: 0, count: WeakRollingHash.bufferSize)
-    }
-
-    init(block: [UInt8]) {
-        buffer = Array(repeating: 0, count: WeakRollingHash.bufferSize)
-        update(withBytes: block)
-    }
-
-    mutating func update(withBytes: Array<UInt8>) {
-        for byte in withBytes {
-            _ = update(withByte: byte)
-        }
-    }
-
-    mutating func update(withByte byte: UInt8) -> UInt32 {
-        // Store in buffer
-        buffer[head % buffer.count] = byte
-
-        let aPush = UInt32(byte)
-        let aPop = head - tail >= buffer.count ? UInt32(buffer[tail % buffer.count]) : 0
-
-        beta1 = (beta1 - aPop + aPush) % _M
-        beta2 = (beta2 - ((UInt32(head - tail) * aPop) % _M) + beta1) % _M
-
-        head += 1
-        if head - tail > buffer.count {
-            tail += 1
-        }
-
-        return self.hash
-    }
-
-    mutating func reset() {
-        beta1 = 0
-        beta2 = 0
-        head = 0
-        tail = 0
-    }
-
-    var hash: UInt32 {
-        return beta1 + _M * beta2
-    }
-}
 
 public struct BlockHash: ProtobufAlias, Equatable, Hashable {
     typealias PBMessage = PBBlockHash
@@ -72,8 +16,8 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
     }
 
     init(block: Data) {
-        self.weakHash = WeakRollingHash(block: block.bytes).hash
-        self.strongHash = block.md5()
+        self.weakHash = WeakRollingHash(block: block).hash
+        self.strongHash = MD5Hash.immediateHash(of: block)
     }
 
     init(weakHash: UInt32, strongHash: Data) {

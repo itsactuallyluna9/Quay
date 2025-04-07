@@ -209,7 +209,7 @@ public struct WharfPatch: WharfFile {
                     // weak hash hit!
                     // compute and check strong hash
                     // md5 the 64KB window
-                    let strongHash = fileData.subdata(in: tail..<head).md5()
+                    let strongHash = MD5Hash.immediateHash(of: fileData.subdata(in: tail..<head))
                     
                     // check if we have a match
                     // Sort candidates to prioritize the preferred file index

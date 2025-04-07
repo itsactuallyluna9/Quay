@@ -5,6 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "Quay",
+    platforms: [
+        .macOS(.v10_15),
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
@@ -14,7 +17,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.29.0"),
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.4"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
         .package(url: "https://github.com/f-meloni/SwiftBrotli.git", branch: "master")
     ],
     targets: [
@@ -24,7 +27,7 @@ let package = Package(
             name: "Quay",
             dependencies: [
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "CryptoSwift", package: "cryptoswift"),
+                .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "SwiftBrotli", package: "SwiftBrotli")
             ],
             exclude: [
