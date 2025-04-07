@@ -12,6 +12,15 @@ import Foundation
     #expect(3 == BlockHash.computeNumBlocks(BlockSize*2+1))
 }
 
-@Test("", .disabled()) func testComputeBlockSize() async throws {
-//    #expect(0, BlockHash.computeBlockSize())
+@Test func testComputeBlockSize() async throws {
+    #expect(BlockSize - 1 == BlockHash.computeBlockSize(fileSize: BlockSize - 1, blockIdx: 0))
+    
+    #expect(BlockSize == BlockHash.computeBlockSize(fileSize: BlockSize, blockIdx: 0))
+    
+    #expect(BlockSize == BlockHash.computeBlockSize(fileSize: BlockSize + 1, blockIdx: 0))
+    #expect(1 == BlockHash.computeBlockSize(fileSize: BlockSize + 1, blockIdx: 1))
+    
+    #expect(BlockSize == BlockHash.computeBlockSize(fileSize: BlockSize*2 + 1, blockIdx: 0))
+    #expect(BlockSize == BlockHash.computeBlockSize(fileSize: BlockSize*2 + 1, blockIdx: 1))
+    #expect(1 == BlockHash.computeBlockSize(fileSize: BlockSize*2 + 1, blockIdx: 2))
 }
