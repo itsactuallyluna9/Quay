@@ -77,4 +77,8 @@ public struct BlockHash: ProtobufAlias, Equatable, Hashable {
         }
         return BlockSize
     }
+    
+    public static func == (lhs: BlockHash, rhs: BlockHash) -> Bool {
+        return lhs.weakHash == rhs.weakHash && lhs.strongHash == rhs.strongHash
+    }
 }
