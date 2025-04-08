@@ -47,11 +47,6 @@ public extension Quay {
     ///   - new: The directory to write the patched version to (the "new" version).
     ///   - stagingDir: A directory for temporary files, or `nil` to use the system temporary directory.
     static func apply(patch: WharfPatch, old: URL, new: URL, stagingDir: URL?) throws {
-        if old == new {
-            // safety check
-            return try apply(patch: patch, to: old, stagingDir: stagingDir)
-        }
-
         let stagingDir = stagingDir ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
         // Step 1: Pre-Processing
@@ -100,10 +95,29 @@ public extension Quay {
 
 
         // Step n: Post-Processing
-        // Symlinks
-        // Files in new but not in old should be deleted
-        // Directories in new but not in old should be removed if they are empty
-        // TODO: this!!
+
+        if old == new {
+            // Symlinks
+            // Files in new but not in old should be deleted
+            // Directories in new but not in old should be removed if they are empty
+
+            // TODO: above
+        } else {
+            // Copy the staged directory to the new location
+            let fm = FileManager.default
+            if fm.fileExists(atPath: new.path) {
+                try fm.removeItem(at: new)
+            }
+            try fm.copyItem(at: stagingDir, to: new)
+            
+            // Symlinks
+            for link in patch.sourceContainer.symlinks {
+                let linkPath = new.appendingPathComponent(link.name)
+                let targetPath = new.appendingPathComponent(link.target)
+                try FileManager.default.createSymbolicLink(at: linkPath, withDestinationURL: targetPath)
+            }
+        }
+
     }
 
     /// Apply a patch to a directory, in-place.
@@ -113,6 +127,6 @@ public extension Quay {
     ///   - to: The directory to apply the patch to.
     ///   - stagingDir: A directory for temporary files, or `nil` to use the system temporary directory.
     static func apply(patch: WharfPatch, to: URL, stagingDir: URL?) throws {
-        
+        return try apply(patch: patch, old: to, new: to, stagingDir: stagingDir)
     }
 }

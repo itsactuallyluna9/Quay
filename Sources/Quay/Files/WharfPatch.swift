@@ -263,12 +263,49 @@ public struct WharfPatch: WharfFile {
             // do one last check...
             owedHead = fileData.count
             if owedHead - owedTail > 0 {
-                // write out the owed data
-                // TODO: check if we can extend the last blockRange
+                // write out the owed data                
                 let span = owedTail..<owedHead
-                let owedData = fileData.subdata(in: span)
-                self.syncOps.append(SyncOp.initData(data: owedData))
+                let remainingData = fileData.subdata(in: span)
+                
+                // check if this remaining data matches a block in the target
+                let remainingWeakHash = WeakRollingHash.immediateHash(of: remainingData)
+                if let candidates = library[remainingWeakHash] {
+                    let remainingStrongHash = MD5Hash.immediateHash(of: remainingData)
+                    
+                    // Sort candidates to prioritize the preferred file index
+                    let sortedCandidates = candidates.sorted { (lhs, rhs) in
+                        if lhs.fileIndex == perferredFileIndex {
+                            return true
+                        } else if rhs.fileIndex == perferredFileIndex {
+                            return false
+                        } else {
+                            return lhs.fileIndex! < rhs.fileIndex!
+                        }
+                    }
+                    
+                    if let match = sortedCandidates.first(where: { $0.strongHash == remainingStrongHash }) {
+                        // found a match :>
+
+                        if var lastOp = syncOps.last as? SyncOp, lastOp.type == .blockRange, 
+                        lastOp.fileIndex == match.fileIndex, 
+                        (lastOp.blockIndex! + lastOp.blockSpan!) == match.blockIndex {
+                            // last block's same file - extend the block range
+                            lastOp.blockSpan! += 1
+                            syncOps[syncOps.count - 1] = lastOp
+                        } else {
+                            // new block range
+                            syncOps.append(SyncOp.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
+                        }
+                    } else {
+                        // no match found, just write the data
+                        self.syncOps.append(SyncOp.initData(data: remainingData))
+                    }
+                } else {
+                    // no match found, just write the data
+                    self.syncOps.append(SyncOp.initData(data: remainingData))
+                }
             }
+
             self.syncOps.append(SyncOp.initHeyYouDidIt())
             progress.completedUnitCount = Int64(fileIndex)
         }

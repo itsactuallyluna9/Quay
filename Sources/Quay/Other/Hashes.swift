@@ -86,6 +86,12 @@ package struct WeakRollingHash {
         tail = 0
     }
 
+    static func immediateHash(of block: any DataProtocol) -> UInt32 {
+        var hasher = WeakRollingHash()
+        hasher.update(withBytes: block)
+        return hasher.hash
+    }
+
     var hash: UInt32 {
         return beta1 + _M * beta2
     }

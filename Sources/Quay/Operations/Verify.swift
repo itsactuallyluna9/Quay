@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Wound {
+public enum Wound: Equatable {    
     case directory(index: Int)
     case symlink(index: Int)
     case file(index: Int)
@@ -44,8 +44,8 @@ public extension Quay {
             if let v = try? toCheck.resourceValues(forKeys: [.isSymbolicLinkKey]) {
                 if v.isSymbolicLink! {
                     // check if the symlink points to the expected target
-                    let targetURL = toCheck.resolvingSymlinksInPath()
-                    if targetURL == dir.appendingPathComponent(symlink.target) {
+                    let targetPath = try? FileManager.default.destinationOfSymbolicLink(atPath: toCheck.path)
+                    if let targetPath = targetPath, URL(fileURLWithPath: targetPath, relativeTo: dir) == dir.appendingPathComponent(symlink.target) {
                         continue
                     }
                 }
