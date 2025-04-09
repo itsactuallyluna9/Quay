@@ -3,7 +3,7 @@ import Foundation
 public struct QuayContainer: ProtobufAlias, Equatable {
     typealias PBMessage = PBContainer
 
-    public struct QuayDir : ProtobufAlias, Equatable {
+    public struct Directory : ProtobufAlias, Equatable {
         typealias PBMessage = PBDir
         public private(set) var name: String
         public private(set) var permissions: UInt32
@@ -26,7 +26,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         }
     }
 
-    public struct QuayFile : ProtobufAlias, Equatable {
+    public struct File : ProtobufAlias, Equatable {
         typealias PBMessage = PBFile
 
         public private(set) var name: String
@@ -54,7 +54,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         }
     }
 
-    public struct QuaySymlink : ProtobufAlias, Equatable {
+    public struct Symlink : ProtobufAlias, Equatable {
         typealias PBMessage = PBSymlink
 
         public private(set) var name: String
@@ -82,13 +82,13 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         }
     }
 
-    public private(set) var directories: [QuayDir] = []
-    public private(set) var files: [QuayFile] = []
-    public private(set) var symlinks: [QuaySymlink] = []
+    public private(set) var directories: [Directory] = []
+    public private(set) var files: [File] = []
+    public private(set) var symlinks: [Symlink] = []
     
     public static let empty: QuayContainer = .init(directories: [], files: [], symlinks: [])
     
-    public init(directories: [QuayDir] = [], files: [QuayFile] = [], symlinks: [QuaySymlink] = []) {
+    public init(directories: [Directory] = [], files: [File] = [], symlinks: [Symlink] = []) {
         self.directories = directories
         self.files = files
         self.symlinks = symlinks
@@ -130,9 +130,9 @@ public struct QuayContainer: ProtobufAlias, Equatable {
     }
     
     init(protobuf: PBContainer) {
-        self.directories = protobuf.dirs.map { QuayDir.init(protobuf: $0) }
-        self.files = protobuf.files.map { QuayFile.init(protobuf: $0) }
-        self.symlinks = protobuf.symlinks.map { QuaySymlink.init(protobuf: $0) }
+        self.directories = protobuf.dirs.map { Directory.init(protobuf: $0) }
+        self.files = protobuf.files.map { File.init(protobuf: $0) }
+        self.symlinks = protobuf.symlinks.map { Symlink.init(protobuf: $0) }
     }
 
     public func iterFiles(_ root: URL?) -> AnyIterator<URL> {

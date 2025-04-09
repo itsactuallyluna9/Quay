@@ -21,7 +21,7 @@ private func applyPreProcess(container: QuayContainer, target: URL) throws {
     }
 }
 
-private func prepareDirectory(dir: QuayContainer.QuayDir, target: URL) throws {
+private func prepareDirectory(dir: QuayContainer.Directory, target: URL) throws {
     let fm = FileManager.default
     let dirPath = target.appendingPathComponent(dir.name)
 
@@ -33,7 +33,7 @@ private func prepareDirectory(dir: QuayContainer.QuayDir, target: URL) throws {
     }
 }
 
-private func prepareFile(file: QuayContainer.QuayFile, target: URL) throws {
+private func prepareFile(file: QuayContainer.File, target: URL) throws {
     let fm = FileManager.default
     let filePath = target.appendingPathComponent(file.name)
 }
@@ -56,33 +56,30 @@ public extension Quay {
         // Step 2: Apply!
         var currentFile: FileHandle? = nil
         for op in patch.syncOps {
-            // check if SyncOpHeader or SyncOp
-            // they're two separate classes
-            if let syncOpHeader = op as? SyncOpHeader {
-                // Handle header operations if needed
-                switch syncOpHeader.type {
+            switch op {
+            case .startFile(algorithm: let algo, fileIndex: let fileIndex):
+                switch algo {
                 case .rsync:
                     break
                 case .bsdiff:
                     throw Quay.createError(.unimplemented, description: "BSDiff not implemented!", failureReason: "BSDiff isn't implemented :<")
                 }
-                let fp = patch.sourceContainer.files[syncOpHeader.fileIndex].name
+                
+                let fp = patch.sourceContainer.files[fileIndex].name
                 try "".write(to: stagingDir.appendingPathComponent(fp), atomically: true, encoding: .ascii)
                 currentFile = try FileHandle(forWritingTo: stagingDir.appendingPathComponent(fp))
-                continue
-            }
-            let op = op as! SyncOp
-            switch op.type {
-            case .data:
-                // write data at the current offset
-                currentFile!.write(op.data!)
+                
                 break
-            case .blockRange:
+            case .data(data: let data):
+                // write data at the current offset
+                currentFile!.write(data)
+                break
+            case .blockRange(sourceFileIndex: let fileIndex, blockIndex: let blockIndex, blockSpan: let blockSpan):
                 // Block range!
                 // figure out what to read...
-                let sourceFile = patch.targetContainer.files[op.fileIndex!]
+                let sourceFile = patch.targetContainer.files[fileIndex]
                 let sourceFilePath = old.appendingPathComponent(sourceFile.name)
-                let read = try Data(contentsOf: sourceFilePath).subdata(in: Range(BlockHash.computeBlockSize(fileSize: sourceFile.size, blockIdx: op.blockIndex!)...BlockHash.computeBlockSize(fileSize: sourceFile.size, blockIdx: op.blockIndex! + op.blockSpan!)))
+                let read = try Data(contentsOf: sourceFilePath).subdata(in: Range(BlockHash.computeBlockSize(fileSize: sourceFile.size, blockIdx: blockIndex)...BlockHash.computeBlockSize(fileSize: sourceFile.size, blockIdx: blockIndex + blockSpan)))
                 // now write the thing
                 currentFile?.write(read)
                 break

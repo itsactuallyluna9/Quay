@@ -18,6 +18,7 @@ public struct SyncOpHeader: ProtobufAlias {
     public package(set) var type: SyncHeaderType
     public package(set) var fileIndex: Int
 
+    @available(*, deprecated, renamed: "SyncOperation.from(protobuf:)", message: "code cleanup")
     init(protobuf: PBSyncHeader) throws {
         self.type = try .fromProtobuf(protobuf.type)
         self.fileIndex = Int(protobuf.fileIndex)
@@ -28,6 +29,7 @@ public struct SyncOpHeader: ProtobufAlias {
         self.fileIndex = fileIndex
     }
 
+    @available(*, deprecated, renamed: "SyncOperation.protobuf()", message: "code cleanup")
     func protobuf() -> PBSyncHeader {
         var header = PBSyncHeader()
         header.type = PBSyncHeader.PBType(rawValue: type.rawValue)!
@@ -58,6 +60,7 @@ public struct SyncOp: ProtobufAlias {
     public package(set) var blockSpan: Int?
     public package(set) var data: Data?
 
+    @available(*, deprecated, renamed: "SyncOperation.from(protobuf:)", message: "code cleanup")
     init(protobuf: PBSyncOp) throws {
         self.type = try .fromProtobuf(protobuf.type)
         self.fileIndex = Int(protobuf.fileIndex)
@@ -74,18 +77,7 @@ public struct SyncOp: ProtobufAlias {
         self.data = data
     }
 
-    static func initBlockRange(fileIndex: Int, blockIndex: Int, blockSpan: Int) -> SyncOp {
-        SyncOp(type: .blockRange, fileIndex: fileIndex, blockIndex: blockIndex, blockSpan: blockSpan, data: nil)
-    }
-
-    static func initData(data: Data) -> SyncOp {
-        SyncOp(type: .data, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: data)
-    }
-
-    static func initHeyYouDidIt() -> SyncOp {
-        SyncOp(type: .heyYouDidIt, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: nil)
-    }
-
+    @available(*, deprecated, renamed: "SyncOperation.protobuf()", message: "code cleanup")
     func protobuf() -> PBSyncOp {
         var op = PBSyncOp()
         op.type = PBSyncOp.PBType(rawValue: type.rawValue)!
@@ -117,18 +109,47 @@ public struct PatchHeader: FileHeader {
     }
 }
 
-/// A `WharfPatch` contains all of the information needed to apply an upgrade from `old` to `new`.
-protocol SyncOperation: ProtobufAlias {}
-extension SyncOp: SyncOperation {}
-extension SyncOpHeader: SyncOperation {}
+public enum SyncOperation {
+    case startFile(algorithm: SyncOpHeader.SyncHeaderType, fileIndex: Int)
+    case blockRange(sourceFileIndex: Int, blockIndex: Int, blockSpan: Int)
+    case data(data: Data)
+    case heyYouDidIt // keeping the name since it's cool :>
+    
+    static func fromProtobuf(_ protobuf: PBSyncOp) throws -> SyncOperation {
+        switch protobuf.type {
+        case .blockRange:
+            return .blockRange(sourceFileIndex: Int(protobuf.fileIndex), blockIndex: Int(protobuf.blockIndex), blockSpan: Int(protobuf.blockSpan))
+        case .data:
+            return .data(data: protobuf.data)
+        case .heyYouDidIt:
+            return .heyYouDidIt
+        case .UNRECOGNIZED(_):
+            throw Quay.createError(.decodeFailed, description: "Unrecognized Sync Operation", failureReason: nil)
+        }
+    }
+    
+    func protobuf() -> any ProtobufAlias {
+        switch self {
+        case .startFile(let algorithm, let fileIndex):
+            return SyncOpHeader(type: algorithm, fileIndex: fileIndex)
+        case .blockRange(let sourceFileIndex, let blockIndex, let blockSpan):
+            return SyncOp(type: .blockRange, fileIndex: sourceFileIndex, blockIndex: blockIndex, blockSpan: blockSpan, data: nil)
+        case .data(let data):
+            return SyncOp(type: .data, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: data)
+        case .heyYouDidIt:
+            return SyncOp(type: .heyYouDidIt, fileIndex: nil, blockIndex: nil, blockSpan: nil, data: nil)
+        }
+    }
+}
 
+/// A `WharfPatch` contains all of the information needed to apply an upgrade from `old` to `new`.
 public struct WharfPatch: WharfFile {
     var magic: Magic { .patch }
 
     public var header: PatchHeader
     public private(set) var targetContainer: QuayContainer
     public private(set) var sourceContainer: QuayContainer
-    private(set) var syncOps: [any SyncOperation]
+    private(set) var syncOps: [SyncOperation]
     
     public init(from data: Data) throws {
         let headerResults = try parseHeader(data: data, headerType: PatchHeader.self, expectedMagic: .patch)
@@ -147,10 +168,10 @@ public struct WharfPatch: WharfFile {
         for message in messages.dropFirst(2) {
             if nextHeader {
                 nextHeader = false
-                self.syncOps.append(try SyncOpHeader(protobuf: message))
+//                self.syncOps.append(try SyncOpHeader(protobuf: message))
             } else {
                 let parsed = try SyncOp(protobuf: message)
-                self.syncOps.append(parsed)
+//                self.syncOps.append(parsed)
                 if parsed.type == .heyYouDidIt {
                     nextHeader = true
                 }
@@ -193,7 +214,7 @@ public struct WharfPatch: WharfFile {
             // if that ever gets above 4MB, we need to write it out.
             // if we find a match, we need to write out the owed data, then we can do the thing
 
-            self.syncOps.append(SyncOpHeader.init(type: .rsync, fileIndex: fileIndex))
+            self.syncOps.append(.startFile(algorithm: .rsync, fileIndex: fileIndex))
 
             while head < fileData.count {
                 let byte = fileData[head]
@@ -224,15 +245,15 @@ public struct WharfPatch: WharfFile {
                         if owedTail < tail {
                             let span = owedTail..<tail
                             let owedData = fileData.subdata(in: span)
-                            self.syncOps.append(SyncOp.initData(data: owedData))
+                            self.syncOps.append(.data(data: owedData))
                             owedTail = tail
                         }
                         // write out the match
                         // if the previous syncOp was a blockRange, we can extend it
-                        if var lastOp = syncOps.last as? SyncOp, lastOp.type == .blockRange, lastOp.fileIndex == match.fileIndex, (lastOp.blockIndex! + lastOp.blockSpan!) == match.blockIndex {
-                            lastOp.blockSpan! += 1
+                        if let lastOp = syncOps.last, case .blockRange(let sourceFileIndex, let blockIndex, var blockSpan) = lastOp, sourceFileIndex == match.fileIndex, (blockIndex + blockSpan) == match.blockIndex {
+                            blockSpan += 1
                         } else {
-                            syncOps.append(SyncOp.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
+                            syncOps.append(.blockRange(sourceFileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
                         }
                         // reset the window
                         tail = head
@@ -250,7 +271,7 @@ public struct WharfPatch: WharfFile {
                     // write out the owed data
                     let span = owedTail..<owedHead
                     let owedData = fileData.subdata(in: span)
-                    self.syncOps.append(SyncOp.initData(data: owedData))
+                    self.syncOps.append(.data(data: owedData))
                     owedTail = owedHead
                 }
             }
@@ -281,27 +302,23 @@ public struct WharfPatch: WharfFile {
                     if let match = sortedCandidates.first(where: { $0.strongHash == remainingStrongHash }) {
                         // found a match :>
 
-                        if var lastOp = syncOps.last as? SyncOp, lastOp.type == .blockRange, 
-                        lastOp.fileIndex == match.fileIndex, 
-                        (lastOp.blockIndex! + lastOp.blockSpan!) == match.blockIndex {
-                            // last block's same file - extend the block range
-                            lastOp.blockSpan! += 1
-                            syncOps[syncOps.count - 1] = lastOp
+                        if let lastOp = syncOps.last, case .blockRange(let sourceFileIndex, let blockIndex, var blockSpan) = lastOp, sourceFileIndex == match.fileIndex, (blockIndex + blockSpan) == match.blockIndex {
+                            blockSpan += 1
                         } else {
                             // new block range
-                            syncOps.append(SyncOp.initBlockRange(fileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
+                            syncOps.append(.blockRange(sourceFileIndex: match.fileIndex!, blockIndex: match.blockIndex!, blockSpan: 1))
                         }
                     } else {
                         // no match found, just write the data
-                        self.syncOps.append(SyncOp.initData(data: remainingData))
+                        self.syncOps.append(.data(data: remainingData))
                     }
                 } else {
                     // no match found, just write the data
-                    self.syncOps.append(SyncOp.initData(data: remainingData))
+                    self.syncOps.append(.data(data: remainingData))
                 }
             }
 
-            self.syncOps.append(SyncOp.initHeyYouDidIt())
+            self.syncOps.append(.heyYouDidIt)
             progress.completedUnitCount = Int64(fileIndex)
         }
     }
@@ -311,6 +328,6 @@ public struct WharfPatch: WharfFile {
     }
 
     func encodeBody() -> [any ProtobufAlias] {
-        [targetContainer as any ProtobufAlias, sourceContainer as any ProtobufAlias] + syncOps as [any ProtobufAlias]
+        [targetContainer as any ProtobufAlias, sourceContainer as any ProtobufAlias] + syncOps.map( { $0.protobuf() }) as [any ProtobufAlias]
     }
 }
