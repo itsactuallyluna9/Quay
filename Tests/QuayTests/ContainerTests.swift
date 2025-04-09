@@ -5,7 +5,7 @@ import Foundation
 struct Container {
     @Test()
     func readsFromProtobuf() async throws {
-        let data = Data(base64Encoded: "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmc=")
+        let data = Data(base64Encoded: "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmeAAY6ABA==")
         try #require(data != nil)
 
         let container = try QuayContainer(protobuf: data!)
@@ -47,6 +47,6 @@ struct Container {
         ])
 
         let data = try container.protobuf().serializedData()
-        #expect(data.base64EncodedString() == "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmc=")
+        #expect(data.base64EncodedString() == "ChAKCWhlbGxvLnR4dBCkAxgOChkKEHNhbXBsZS9pbWFnZS5wbmcQpAMYgIAEEgwKBnNhbXBsZRDtgwQaIgoJaW1hZ2UucG5nEKSDgEAaEHNhbXBsZS9pbWFnZS5wbmeAAY6ABA==")
     }
 }
