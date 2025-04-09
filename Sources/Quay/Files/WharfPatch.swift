@@ -175,7 +175,7 @@ public struct WharfPatch: WharfFile {
             var owedTail = 0
             var owedHead = 0
             var tail = 0
-            var head = 64 * 1024
+            var head = 0
 
             let fileData = try Data(contentsOf: file)
             let filePath = file.path
@@ -198,11 +198,6 @@ public struct WharfPatch: WharfFile {
             while head < fileData.count {
                 let byte = fileData[head]
                 let weakHash = weakHashDigest.update(withByte: byte)
-                if head - tail < 64 * 1024 {
-                    // we haven't filled the window yet...
-                    head += 1
-                    continue
-                }
                 
                 // did we get a hit?
                 if let candidates = library[weakHash] {

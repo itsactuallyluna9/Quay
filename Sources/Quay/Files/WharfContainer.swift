@@ -133,7 +133,6 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         self.directories = protobuf.dirs.map { QuayDir.init(protobuf: $0) }
         self.files = protobuf.files.map { QuayFile.init(protobuf: $0) }
         self.symlinks = protobuf.symlinks.map { QuaySymlink.init(protobuf: $0) }
-        
     }
 
     public func iterFiles(_ root: URL?) -> AnyIterator<URL> {
@@ -150,6 +149,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         container.dirs = directories.map { $0.protobuf() }
         container.files = files.map { $0.protobuf() }
         container.symlinks = symlinks.map { $0.protobuf() }
+        container.size = Int64(files.reduce(0) { $0 + $1.size })
         return container
     }
 }
