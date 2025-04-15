@@ -1,35 +1,35 @@
 import Foundation
 
-public struct SignatureHeader: FileHeader {
-    typealias PBMessage = PBSignatureHeader
-
-    public var compression: CompressionSettings
-    
-    public init(compression: CompressionSettings) {
-        self.compression = compression
-    }
-    
-    init(protobuf: PBSignatureHeader) throws {
-        self.compression = try .init(protobuf: protobuf.compression)
-    }
-
-    func protobuf() -> PBSignatureHeader {
-        var header = PBSignatureHeader()
-        header.compression = compression.protobuf()
-        return header
-    }
-}
-
 /// A `WharfSignature` contains a container and a series of hashes corresponding to the container's files.
 public struct WharfSignature: WharfFile {
+    public struct Header: FileHeader {
+        typealias PBMessage = PBSignatureHeader
+
+        public var compression: CompressionSettings
+        
+        public init(compression: CompressionSettings) {
+            self.compression = compression
+        }
+        
+        init(protobuf: PBSignatureHeader) throws {
+            self.compression = try .init(protobuf: protobuf.compression)
+        }
+
+        func protobuf() -> PBSignatureHeader {
+            var header = PBSignatureHeader()
+            header.compression = compression.protobuf()
+            return header
+        }
+    }
+    
     internal var magic: Magic { .signature }
 
-    public var header: SignatureHeader
+    public var header: Header
     public private(set) var container: QuayContainer
     public package(set) var blockHashes: [BlockHash]
     
     public init(from data: Data) throws {
-        let headerResults = try parseHeader(data: data, headerType: SignatureHeader.self, expectedMagic: .signature)
+        let headerResults = try parseHeader(data: data, headerType: Header.self, expectedMagic: .signature)
         self.header = headerResults.header
         // Step 4: parse body
         // Body consists of a Container, and then a bunch of BlockHash messages.
@@ -41,7 +41,7 @@ public struct WharfSignature: WharfFile {
         self.blockHashes = try messages.dropFirst().map { try BlockHash(protobuf: $0) }
     }
 
-    init(header: SignatureHeader, container: QuayContainer, blockHashes: [BlockHash]) {
+    init(header: Header, container: QuayContainer, blockHashes: [BlockHash]) {
         self.header = header
         self.container = container
         self.blockHashes = blockHashes

@@ -1,6 +1,10 @@
 import Foundation
 
-public struct SyncOpHeader: ProtobufAlias {
+// MARK: Legacy
+// We're still keeping this around until we refactor ProtobufAlias.
+// This shouldn't be touched, though.
+
+struct SyncOpHeader: ProtobufAlias {
     typealias PBMessage = PBSyncHeader
 
     public enum SyncHeaderType: Int, CaseIterable, Equatable, Sendable {
@@ -38,7 +42,7 @@ public struct SyncOpHeader: ProtobufAlias {
     }
 }
 
-public struct SyncOp: ProtobufAlias {
+struct SyncOp: ProtobufAlias {
     typealias PBMessage = PBSyncOp
 
     public enum SyncOpType: Int, CaseIterable, Equatable, Sendable {
@@ -89,28 +93,22 @@ public struct SyncOp: ProtobufAlias {
     }
 }
 
-public struct PatchHeader: FileHeader {
-    typealias PBMessage = PBPatchHeader
-
-    public var compression: CompressionSettings
-    
-    public init(compression: CompressionSettings) {
-        self.compression = compression
-    }
-    
-    init(protobuf: PBPatchHeader) throws {
-        self.compression = try .init(protobuf: protobuf.compression)
-    }
-    
-    func protobuf() -> PBPatchHeader {
-        var header = PBPatchHeader()
-        header.compression = compression.protobuf()
-        return header
-    }
-}
+// MARK: Rewritten
 
 public enum SyncOperation {
-    case startFile(algorithm: SyncOpHeader.SyncHeaderType, fileIndex: Int)
+    public enum Algorithm: Int {
+        case rsync = 0
+        case bsdiff = 1
+        
+        var legacy: SyncOpHeader.SyncHeaderType {
+            switch self {
+            case .rsync: return .rsync
+            case .bsdiff: return .bsdiff
+            }
+        }
+    }
+    
+    case startFile(algorithm: Algorithm, fileIndex: Int)
     case blockRange(sourceFileIndex: Int, blockIndex: Int, blockSpan: Int)
     case data(data: Data)
     case heyYouDidIt // keeping the name since it's cool :>
@@ -131,7 +129,7 @@ public enum SyncOperation {
     func protobuf() -> any ProtobufAlias {
         switch self {
         case .startFile(let algorithm, let fileIndex):
-            return SyncOpHeader(type: algorithm, fileIndex: fileIndex)
+            return SyncOpHeader(type: algorithm.legacy, fileIndex: fileIndex)
         case .blockRange(let sourceFileIndex, let blockIndex, let blockSpan):
             return SyncOp(type: .blockRange, fileIndex: sourceFileIndex, blockIndex: blockIndex, blockSpan: blockSpan, data: nil)
         case .data(let data):
@@ -145,14 +143,34 @@ public enum SyncOperation {
 /// A `WharfPatch` contains all of the information needed to apply an upgrade from `old` to `new`.
 public struct WharfPatch: WharfFile {
     var magic: Magic { .patch }
+    
+    public struct Header: FileHeader {
+        typealias PBMessage = PBPatchHeader
 
-    public var header: PatchHeader
+        public var compression: CompressionSettings
+        
+        public init(compression: CompressionSettings) {
+            self.compression = compression
+        }
+        
+        init(protobuf: PBPatchHeader) throws {
+            self.compression = try .init(protobuf: protobuf.compression)
+        }
+        
+        func protobuf() -> PBPatchHeader {
+            var header = PBPatchHeader()
+            header.compression = compression.protobuf()
+            return header
+        }
+    }
+
+    public var header: Header
     public private(set) var targetContainer: QuayContainer
     public private(set) var sourceContainer: QuayContainer
     private(set) var syncOps: [SyncOperation]
     
     public init(from data: Data) throws {
-        let headerResults = try parseHeader(data: data, headerType: PatchHeader.self, expectedMagic: .patch)
+        let headerResults = try parseHeader(data: data, headerType: Header.self, expectedMagic: .patch)
         self.header = headerResults.header
         // Step 4: parse body
         // Body consists of two Containers, and then a bunch of SyncOp messages.
