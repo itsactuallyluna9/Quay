@@ -12,13 +12,18 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "Quay",
-            targets: ["Quay"])
+            targets: ["Quay"]),
+        .executable(
+            name: "hedge",
+            targets: ["Hedge"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.29.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
-        .package(url: "https://github.com/f-meloni/SwiftBrotli.git", branch: "master")
+        .package(url: "https://github.com/f-meloni/SwiftBrotli.git", branch: "master"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
+        .package(url: "https://github.com/vapor/console-kit.git", from: "4.15.2")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -38,6 +43,14 @@ let package = Package(
         .testTarget(
             name: "QuayTests",
             dependencies: ["Quay"]
+        ),
+        .executableTarget(
+            name: "Hedge",
+            dependencies: [
+                .byName(name: "Quay"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "ConsoleKitTerminal", package: "console-kit")
+            ]
         ),
     ]
 )
