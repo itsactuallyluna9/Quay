@@ -7,7 +7,7 @@ import Quay
 struct Hedge: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "mewo",
-        version: "v0.0.1-alpha",
+        version: VersionatorVersion.full,
         subcommands: [
             Sign.self,
             Diff.self,
