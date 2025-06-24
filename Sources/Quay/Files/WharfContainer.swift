@@ -15,7 +15,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         
         init(protobuf: PBDir) {
             self.name = protobuf.path
-            self.permissions = protobuf.mode
+            self.permissions = protobuf.mode & 0xFFFF
         }
 
         func protobuf() -> PBDir {
@@ -70,7 +70,7 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         init(protobuf: PBSymlink) {
             self.name = protobuf.path
             self.target = protobuf.dest
-            self.permissions = protobuf.mode
+            self.permissions = protobuf.mode & 0xFFFF
         }
 
         func protobuf() -> PBSymlink {
