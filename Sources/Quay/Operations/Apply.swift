@@ -15,10 +15,6 @@ private func applyPreProcess(container: QuayContainer, target: URL) throws {
     for file in container.files {
         try prepareFile(file: file, target: target)
     }
-
-    for link in container.symlinks {
-//        try prepareSymlink(link: link, target: target)
-    }
 }
 
 private func prepareDirectory(dir: QuayContainer.Directory, target: URL) throws {
@@ -36,6 +32,15 @@ private func prepareDirectory(dir: QuayContainer.Directory, target: URL) throws 
 private func prepareFile(file: QuayContainer.File, target: URL) throws {
     let fm = FileManager.default
     let filePath = target.appendingPathComponent(file.name)
+
+    if !fm.fileExists(atPath: filePath.path) {
+        // Create the file with the correct permissions
+        try "".write(to: filePath, atomically: true, encoding: .utf8)
+        try fm.setAttributes([.posixPermissions: file.permissions], ofItemAtPath: filePath.path)
+    } else {
+        // If it exists, ensure the permissions are set correctly
+        try fm.setAttributes([.posixPermissions: file.permissions], ofItemAtPath: filePath.path)
+    }
 }
 
 public extension Quay {
@@ -94,11 +99,45 @@ public extension Quay {
         // Step n: Post-Processing
 
         if old == new {
-            // Symlinks
-            // Files in new but not in old should be deleted
-            // Directories in new but not in old should be removed if they are empty
+            let fm = FileManager.default
 
-            // TODO: above
+            // Symlinks
+            for link in patch.sourceContainer.symlinks {
+                let linkPath = new.appendingPathComponent(link.name)
+                let targetPath = new.appendingPathComponent(link.target)
+                // overwrite if needed...
+                if fm.fileExists(atPath: linkPath.path) {
+                    try fm.removeItem(at: linkPath)
+                }
+                try fm.createSymbolicLink(at: linkPath, withDestinationURL: targetPath)
+            }
+
+            // Files in new but not in old should be deleted
+            for file in patch.targetContainer.files {
+                let filePath = new.appendingPathComponent(file.name)
+                if fm.fileExists(atPath: filePath.path) {
+                    try fm.removeItem(at: filePath)
+                }
+            }
+
+            // Symlinks in new but not in old should be deleted
+            for link in patch.targetContainer.symlinks {
+                let linkPath = new.appendingPathComponent(link.name)
+                if fm.fileExists(atPath: linkPath.path) {
+                    try fm.removeItem(at: linkPath)
+                }
+            }
+
+            // Directories in new but not in old should be removed if they are empty
+            for dir in patch.targetContainer.directories {
+                let dirPath = new.appendingPathComponent(dir.name)
+                if fm.fileExists(atPath: dirPath.path) {
+                    let contents = try fm.contentsOfDirectory(atPath: dirPath.path)
+                    if contents.isEmpty {
+                        try fm.removeItem(at: dirPath)
+                    }
+                }
+            }
         } else {
             // Copy the staged directory to the new location
             let fm = FileManager.default
@@ -111,10 +150,11 @@ public extension Quay {
             for link in patch.sourceContainer.symlinks {
                 let linkPath = new.appendingPathComponent(link.name)
                 let targetPath = new.appendingPathComponent(link.target)
-                try FileManager.default.createSymbolicLink(at: linkPath, withDestinationURL: targetPath)
+                try fm.createSymbolicLink(at: linkPath, withDestinationURL: targetPath)
             }
-        }
 
+            // We can skip the rest of the post-processing since we're not in-place
+        }
     }
 
     /// Apply a patch to a directory, in-place.
