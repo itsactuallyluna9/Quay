@@ -1,10 +1,10 @@
 import ArgumentParser
-import ConsoleKitTerminal
+import Noora
 import Foundation
 import Quay
 
 @main
-struct Hedge: ParsableCommand {
+struct Hedge: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "mewo",
         version: VersionatorVersion.full,
@@ -29,7 +29,7 @@ struct GenericOptions: ParsableArguments {
 }
 
 extension Hedge {
-    struct Sign: ParsableCommand {
+    struct Sign: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "sign"
         )
@@ -42,12 +42,15 @@ extension Hedge {
         @Argument(help: "Path to write signature to")
         var output: String
 
-        mutating func run() throws {
-            let terminal = Terminal()
+        mutating func run() async throws {
+            let terminal = Noora()
 
-            terminal.info("Creating signature for \(path)")
+            let dir = URL(fileURLWithPath: path)
 
-            var signature = try Quay.sign(dir: URL(fileURLWithPath: path))
+            let signature = try await terminal.progressStep(message: "Creating signature") { updateMessage in
+                return try Quay.sign(dir: dir)
+            }
+
 
             let totalSize = signature.container.files.reduce(0) { $0 + $1.size }
             let numFiles = signature.container.files.count
@@ -58,13 +61,13 @@ extension Hedge {
             let numDirsString = NumberFormatter.localizedString(from: NSNumber(value: numDirs), number: .decimal)
             let numSymlinksString = NumberFormatter.localizedString(from: NSNumber(value: numSymlinks), number: .decimal)
 
-            terminal.success("[ok] \(totalSizeString) (\(numFilesString) files, \(numDirsString) dirs, \(numSymlinksString) symlinks)", newLine: true)
+            terminal.success("Created a \(totalSizeString) signature (\(numFilesString) files, \(numDirsString) dirs, \(numSymlinksString) symlinks)")
             // TODO: actually fix the stuff to write the signature
             let outputURL = URL(fileURLWithPath: output)
         }
     }
 
-    struct Diff: ParsableCommand {
+    struct Diff: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "diff"
         )
@@ -80,19 +83,21 @@ extension Hedge {
         @Argument(help: "Path to write patch and signature file to (signature will be written to this path with .sig extension)")
         var output: String
 
-        mutating func run() throws {
-            let terminal = Terminal()
+        mutating func run() async throws {
+            let terminal = Noora()
 
-            terminal.info("Diffing \(target) against \(source)")
+            let target = URL(fileURLWithPath: target)
+            let source = URL(fileURLWithPath: source)
 
-            var diffResult = try Quay.diff(target: URL(fileURLWithPath: target), source: URL(fileURLWithPath: source))
-            terminal.warning("Not implemented yet")
+            let diffResult = try await terminal.progressStep(message: "Diffing \(target.lastPathComponent) against \(source.lastPathComponent)", successMessage: "Diff created successfully", errorMessage: "Failed to create diff", showSpinner: true) { updateMessage in
+                return try Quay.diff(target: target, source: source)
+            }
 
             // TODO: same thing as in sign
         }
     }
 
-    struct Apply: ParsableCommand {
+    struct Apply: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "apply"
         )
@@ -105,17 +110,16 @@ extension Hedge {
         @Argument(help: "Directory to apply the patch to files")
         var to: String
 
-        mutating func run() throws {
-            let terminal = Terminal()
+        mutating func run() async throws {
+            let terminal = Noora()
 
-            terminal.info("Applying \(patch) to \(to)")
             terminal.warning("Not implemented yet")
 
             // Quay.apply(patch: WharfPatch, to: URL, stagingDir: URL?)
         }
     }
 
-    struct Verify: ParsableCommand {
+    struct Verify: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "verify"
         )
@@ -128,11 +132,18 @@ extension Hedge {
         @Argument(help: "Path to the directory to verify")
         var dir: String
 
-        mutating func run() throws {
-            let terminal = Terminal()
+        mutating func run() async throws {
+            let terminal = Noora()
 
-            terminal.info("Verifying \(signature) against \(dir)")
-            terminal.warning("Not implemented yet")
+            // terminal.info("Verifying \(signature) against \(dir)")
+            if #available(macOS 13.0, *) {
+                try await Task.sleep(for: .seconds(2))
+            } else {
+                // Fallback on earlier versions
+            }
+            terminal.warning([
+                .alert(":3", takeaway: "imma get u :3")
+            ])
 
             // let result = try Quay.verify(signature: URL(fileURLWithPath: signature), dir: URL(fileURLWithPath: dir))
 
