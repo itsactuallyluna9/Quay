@@ -9,6 +9,7 @@ on:
             - 'Tests/**'
             - 'Package.swift'
             - 'Package.resolved'
+            - '.github/workflows/build_test.yml'
     pull_request:
         branches:
             - main
