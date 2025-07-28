@@ -56,7 +56,7 @@ public extension Quay {
         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && !isDirectory.boolValue {
             // Step 2: Load the signature
             do {
-                return try WharfSignature(file: url)
+                return try WharfSignature(from: url)
             } catch {
                 // ...is it because we don't have the magic number?
                 let nsError = error as NSError

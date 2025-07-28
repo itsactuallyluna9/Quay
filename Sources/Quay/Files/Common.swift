@@ -25,63 +25,47 @@ protocol WharfFile {
     var magic: Magic { get }
 
     init(from data: Data) throws
-    init(file: URL) throws
 
     func encodeHeader() -> any FileHeader
     func encodeBody() -> [any ProtobufAlias]
-
-    func encode() throws -> Data
-    func encode(to: URL) throws
 }
 
-extension WharfFile {
-    public init(file: URL) throws {
-        let data = try Data(contentsOf: file)
-        try self.init(from: data)
+internal func encodeWharfFile(_ file: any WharfFile) throws -> Data {
+    let header = file.encodeHeader()
+    let body = try file.encodeBody().map { try $0.protobuf().serializedData() }
+    var bodyData = Data()
+    var finalData = Data()
+    finalData.append(withUnsafeBytes(of: file.magic.rawValue) { Data($0) })
+
+    // serialize header
+    let headerData = try header.protobuf().serializedData()
+    finalData.append(encodeUVarInt(UInt64(headerData.count)))
+    finalData.append(headerData)
+
+    for msg in body {
+        bodyData.append(encodeUVarInt(UInt64(msg.count)))
+        bodyData.append(msg)
     }
 
-    public func encode(to file: URL) throws {
-        let data = try self.encode()
-        try data.write(to: file)
-    }
-
-    public func encode() throws -> Data {
-        let header = encodeHeader()
-        let body = try encodeBody().map { try $0.protobuf().serializedData() }
-        var bodyData = Data()
-        var finalData = Data()
-        finalData.append(withUnsafeBytes(of: magic.rawValue) { Data($0) })
-
-        // serialize header
-        let headerData = try header.protobuf().serializedData()
-        finalData.append(encodeUVarInt(UInt64(headerData.count)))
-        finalData.append(headerData)
-
-        for msg in body {
-            bodyData.append(encodeUVarInt(UInt64(msg.count)))
-            bodyData.append(msg)
+    // compress body
+    switch header.compression.algorithm {
+    case .none:
+        finalData.append(bodyData)
+    case .brotli:
+        let result = Brotli().compress(bodyData, quality: header.compression.quality)
+        switch result {
+        case .success(let compressedData):
+            finalData.append(compressedData)
+        case .failure(let error):
+            throw Quay.createError(.compressionFailed, description: "compression failed", failureReason: error.localizedDescription)
         }
-
-        // compress body
-        switch header.compression.algorithm {
-        case .none:
-            finalData.append(bodyData)
-        case .brotli:
-            let result = Brotli().compress(bodyData, quality: header.compression.quality)
-            switch result {
-            case .success(let compressedData):
-                finalData.append(compressedData)
-            case .failure(let error):
-                throw Quay.createError(.compressionFailed, description: "compression failed", failureReason: error.localizedDescription)
-            }
-        case .gzip:
-            throw Quay.createError(.unimplemented, description: "gzip compression is not yet supported", failureReason: "gzip compression is not yet supported")
-        case .zstd:
-            throw Quay.createError(.unimplemented, description: "zstd compression is not yet supported", failureReason: "zstd compression is not yet supported")
-        }
-
-        return finalData
+    case .gzip:
+        throw Quay.createError(.unimplemented, description: "gzip compression is not yet supported", failureReason: "gzip compression is not yet supported")
+    case .zstd:
+        throw Quay.createError(.unimplemented, description: "zstd compression is not yet supported", failureReason: "zstd compression is not yet supported")
     }
+
+    return finalData
 }
 
 private func checkMagicNumber(actual: Int32, expected: Magic) throws {

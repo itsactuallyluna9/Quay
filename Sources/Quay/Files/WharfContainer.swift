@@ -128,6 +128,12 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         
         try scan(folder)
     }
+
+    public init(from url: URL) throws {
+        let data = try Data(contentsOf: url)
+        let container = try PBContainer(serializedBytes: data)
+        self.init(protobuf: container)
+    }
     
     init(protobuf: PBContainer) {
         self.directories = protobuf.dirs.map { Directory.init(protobuf: $0) }
@@ -151,5 +157,16 @@ public struct QuayContainer: ProtobufAlias, Equatable {
         container.symlinks = symlinks.map { $0.protobuf() }
         container.size = Int64(files.reduce(0) { $0 + $1.size })
         return container
+    }
+}
+
+public extension QuayContainer {
+    func encode() throws -> Data {
+        return try self.protobuf().serializedData()
+    }
+    
+    func encode(to url: URL) throws {
+        let data = try encode()
+        try data.write(to: url)
     }
 }

@@ -197,6 +197,11 @@ public struct WharfPatch: WharfFile {
         }
     }
 
+    public init(from url: URL) throws {
+        let data = try Data(contentsOf: url)
+        try self.init(from: data)
+    }
+
     public init(target: WharfSignature, source: URL) throws {
         let owedMax = 4 * 1024 * 1024 // 4MB
 
@@ -347,5 +352,16 @@ public struct WharfPatch: WharfFile {
 
     func encodeBody() -> [any ProtobufAlias] {
         [targetContainer as any ProtobufAlias, sourceContainer as any ProtobufAlias] + syncOps.map( { $0.protobuf() }) as [any ProtobufAlias]
+    }
+}
+
+public extension WharfPatch {
+    func encode() throws -> Data {
+        return try encodeWharfFile(self)
+    }
+    
+    func encode(to url: URL) throws {
+        let data = try encode()
+        try data.write(to: url)
     }
 }

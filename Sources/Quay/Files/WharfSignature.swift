@@ -41,6 +41,11 @@ public struct WharfSignature: WharfFile {
         self.blockHashes = try messages.dropFirst().map { try BlockHash(protobuf: $0) }
     }
 
+    public init(from url: URL) throws {
+        let data = try Data(contentsOf: url)
+        try self.init(from: data)
+    }
+
     init(header: Header, container: QuayContainer, blockHashes: [BlockHash]) {
         self.header = header
         self.container = container
@@ -53,6 +58,17 @@ public struct WharfSignature: WharfFile {
 
     func encodeHeader() -> any FileHeader {
         header
+    }
+}
+
+public extension WharfSignature {
+    func encode() throws -> Data {
+        return try encodeWharfFile(self)
+    }
+    
+    func encode(to url: URL) throws {
+        let data = try encode()
+        try data.write(to: url)
     }
 }
 
