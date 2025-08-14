@@ -24,7 +24,6 @@ let package = Package(
         .package(url: "https://github.com/f-meloni/SwiftBrotli.git", branch: "master"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
         .package(url: "https://github.com/tuist/Noora", .upToNextMajor(from: "0.41.0")),
-        .package(url: "https://github.com/elegantchaos/Versionator.git", from: "2.0.6"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -51,9 +50,6 @@ let package = Package(
                 .byName(name: "Quay"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Noora", package: "Noora")
-            ],
-            plugins: [
-            	.plugin(name: "VersionatorPlugin", package: "Versionator")
             ]
         ),
     ]
