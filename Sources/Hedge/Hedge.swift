@@ -1,0 +1,157 @@
+import ArgumentParser
+import Noora
+import Foundation
+import Quay
+
+@main
+struct Hedge: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "mewo",
+        version: "placeholder (4)",
+        subcommands: [
+            Sign.self,
+            Diff.self,
+            Apply.self,
+            Verify.self
+        ]
+    )
+}
+
+struct GenericOptions: ParsableArguments {
+    // @Flag(name: .customLong("json"), help: "Output in JSON format")
+    // var json: Bool = false
+    
+    // @Flag(name: .customLong("verbose"), help: "Be more verbose about what is going on")
+    // var verbose: Bool = false
+
+    // @Flag(name: .customLong("ignore"), help: "Glob patterns of files to ignore")
+    // var ignore: [String] = []
+}
+
+extension Hedge {
+    struct Sign: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "sign"
+        )
+
+        @OptionGroup var options: GenericOptions
+
+        @Argument(help: "Path of the directory to sign")
+        var path: String
+
+        @Argument(help: "Path to write signature to")
+        var output: String
+
+        mutating func run() async throws {
+            let terminal = Noora()
+
+            let dir = URL(fileURLWithPath: path)
+
+            let signature = try await terminal.progressStep(message: "Creating signature") { updateMessage in
+                return try Quay.sign(dir: dir)
+            }
+
+
+            let totalSize = signature.container.files.reduce(0) { $0 + $1.size }
+            let numFiles = signature.container.files.count
+            let numDirs = signature.container.directories.count
+            let numSymlinks = signature.container.symlinks.count
+            let totalSizeString = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
+            let numFilesString = NumberFormatter.localizedString(from: NSNumber(value: numFiles), number: .decimal)
+            let numDirsString = NumberFormatter.localizedString(from: NSNumber(value: numDirs), number: .decimal)
+            let numSymlinksString = NumberFormatter.localizedString(from: NSNumber(value: numSymlinks), number: .decimal)
+
+            terminal.success("Created a \(totalSizeString) signature (\(numFilesString) files, \(numDirsString) dirs, \(numSymlinksString) symlinks)")
+            // TODO: actually fix the stuff to write the signature
+            let outputURL = URL(fileURLWithPath: output)
+        }
+    }
+
+    struct Diff: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "diff"
+        )
+
+        @OptionGroup var options: GenericOptions
+
+        @Argument(help: "Drectroy with older files, or a signature file generated from it")
+        var target: String
+
+        @Argument(help: "Directory with newer files")
+        var source: String
+
+        @Argument(help: "Path to write patch and signature file to (signature will be written to this path with .sig extension)")
+        var output: String
+
+        mutating func run() async throws {
+            let terminal = Noora()
+
+            let target = URL(fileURLWithPath: target)
+            let source = URL(fileURLWithPath: source)
+
+            let diffResult = try await terminal.progressStep(message: "Diffing \(target.lastPathComponent) against \(source.lastPathComponent)", successMessage: "Diff created successfully", errorMessage: "Failed to create diff", showSpinner: true) { updateMessage in
+                return try Quay.diff(target: target, source: source)
+            }
+
+            // TODO: same thing as in sign
+        }
+    }
+
+    struct Apply: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "apply"
+        )
+
+        @OptionGroup var options: GenericOptions
+
+        @Argument(help: "Patch file to apply")
+        var patch: String
+
+        @Argument(help: "Directory to apply the patch to files")
+        var to: String
+
+        mutating func run() async throws {
+            let terminal = Noora()
+
+            terminal.warning("Not implemented yet")
+
+            // Quay.apply(patch: WharfPatch, to: URL, stagingDir: URL?)
+        }
+    }
+
+    struct Verify: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "verify"
+        )
+
+        @OptionGroup var options: GenericOptions
+
+        @Argument(help: "Path to the signature file")
+        var signature: String
+
+        @Argument(help: "Path to the directory to verify")
+        var dir: String
+
+        mutating func run() async throws {
+            let terminal = Noora()
+
+            // terminal.info("Verifying \(signature) against \(dir)")
+            if #available(macOS 13.0, *) {
+                try await Task.sleep(for: .seconds(2))
+            } else {
+                // Fallback on earlier versions
+            }
+            terminal.warning([
+                .alert(":3", takeaway: "imma get u :3")
+            ])
+
+            // let result = try Quay.verify(signature: URL(fileURLWithPath: signature), dir: URL(fileURLWithPath: dir))
+
+            // if result {
+            //     terminal.success("[ok] signature verified")
+            // } else {
+            //     terminal.error("[fail] signature verification failed")
+            // }
+        }
+    }
+}
